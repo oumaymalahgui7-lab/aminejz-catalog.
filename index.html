@@ -188,7 +188,7 @@ let localOK = true;   // images/<postId>_<index>.jpg if the folder exists (downl
 const NOIMG = () => `<span class="empty-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>${L().noimg}</span>`;
 const EMB = JSON.parse(document.getElementById("emb").textContent);      // photos already saved inside this file
 let PROXY = ""; try { PROXY = (localStorage.getItem("bsc_proxy") || "").trim().replace(/\/+$/, ""); } catch {}
-if (!PROXY && /\.vercel\.app$/.test(location.hostname)) PROXY = location.origin + "/api";   // this site's own /api/index.js   // your own Cloudflare Worker (adds the Telegram Referer)
+if (!PROXY && /(\.vercel\.app|^aminejz\.fornishoes\.com)$/.test(location.hostname)) PROXY = location.origin + "/api";   // this site's own /api/index.js   // your own Cloudflare Worker (adds the Telegram Referer)
 const wsrv = (u, w) => "https://wsrv.nl/?url=" + encodeURIComponent(u) + "&w=" + w + "&q=80";
 const worker = u => PROXY + "/?url=" + encodeURIComponent(u);
 function chain(p, i, w, fu){
