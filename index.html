@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#F8F9FA;--card:#fff;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--acc:#f59e0b;--acc-d:#b45309;--acc-ink:#0f172a;--wa:#059669;--s9:#0f172a;--s8:#1e293b}
-*{box-sizing:border-box}
+*{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:#1e293b;font-family:Cairo,system-ui,sans-serif;line-height:1.6}
 button,input,select{font:inherit;color:inherit}button{cursor:pointer}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px}
@@ -108,7 +108,7 @@ footer a{color:#fbbf24}
   <div class="act">
     <a class="pill wa" href="https://wa.me/212653769294" target="_blank" rel="noopener">0653769294</a>
     <button class="pill" id="lang"></button>
-    <button class="pill" id="setBtn" aria-label="settings">⚙</button>
+    <button class="pill" id="setBtn" aria-label="settings" hidden>⚙</button>
     <button class="pill dk" id="cartBtn">🛒 <span id="cartLbl"></span><b id="cc">0</b></button>
   </div>
 </div></header>
@@ -193,6 +193,7 @@ const wsrv = (u, w) => "https://wsrv.nl/?url=" + encodeURIComponent(u) + "&w=" +
 const worker = u => PROXY + "/?url=" + encodeURIComponent(u);
 function chain(p, i, w, fu){
   const u = fu || p.i[i], c = [];
+  if (!fu && p.l && p.l[i]) c.push(p.l[i]);
   if (!fu && EMB[p.n + "_" + i]) c.push(EMB[p.n + "_" + i]);
   if (PROXY) c.push(worker(u));
   if (!fu && localOK) c.push(`images/${p.n}_${i}.jpg`);
@@ -268,7 +269,7 @@ function render(){
     openProduct(+c.dataset.n);
   });
 }
-const vids = p => (p.v && p.v.length) ? `<div class="vids">${p.v.map((u,i)=>`<div><video controls playsinline preload="metadata" referrerpolicy="no-referrer" src="${esc(u)}" data-n="${p.n}" data-i="${i}" onerror="vidErr(this)"></video><div class="vb"><a href="${esc(u)}" download target="_blank" rel="noopener">⬇ ${L().dl}</a></div></div>`).join("")}</div>` : "";
+const vids = p => (p.v && p.v.length) ? `<div class="vids">${p.v.map((u,i)=>`<div><video controls playsinline preload="${p.l?"none":"metadata"}" ${p.l&&p.l[0]?`poster="${esc(p.l[0])}"`:""} referrerpolicy="no-referrer" src="${esc(u)}" data-n="${p.n}" data-i="${i}" onerror="vidErr(this)"></video><div class="vb"><a href="${esc(u)}" download target="_blank" rel="noopener">⬇ ${L().dl}</a></div></div>`).join("")}</div>` : "";
 async function freshVid(n){
   const page = `https://t.me/${SRC}/${n}?embed=1&mode=tme`;
   for (const r of (PROXY ? [worker, ...RELAYS] : RELAYS)) {
@@ -323,6 +324,14 @@ function openSettings(){
   $("mgS").onclick = () => { const v = parseFloat($("mg").value); if (isNaN(v) || v < 0) return; margin = v; try { localStorage.setItem("bsc_margin", String(v)); } catch {} render(); $("sd").close(); };
   $("sd").showModal();
 }
+// وضع المالك: زر الإعدادات مخفي عن الزبناء. افتح الرابط مرة واحدة بهذا الشكل لتفعيله على جهازك:  ?admin=CHANGE-ME   (ولإخفائه:  ?admin=off)
+const ADMIN_KEY = "CHANGE-ME";
+try {
+  const a = new URLSearchParams(location.search).get("admin");
+  if (a === ADMIN_KEY) localStorage.setItem("bsc_admin", "1"); else if (a === "off") localStorage.removeItem("bsc_admin");
+  if (a !== null) history.replaceState(null, "", location.pathname + location.hash);
+  $("setBtn").hidden = localStorage.getItem("bsc_admin") !== "1";
+} catch {}
 $("home").onclick = () => scrollTo({top:0,behavior:"smooth"}); $("setBtn").onclick = openSettings; $("cartBtn").onclick = openCart;
 $("pdX").onclick = () => $("pd").close(); $("cdX").onclick = () => $("cd").close(); $("sdX").onclick = () => $("sd").close();
 $("pd").addEventListener("close", () => history.replaceState(null, "", location.pathname + location.search));
@@ -349,6 +358,16 @@ function addNew(list){
   } catch {}
 })();
 render();
+(async () => {   // media.json: local permanent copies of all photos & videos (made by fetch_media.py)
+  try {
+    const r = await fetch("media.json", { cache: "no-cache" }); if (!r.ok) return;
+    const M = await r.json();
+    for (const p of PRODUCTS) { const m = M[p.n]; if (!m) continue;
+      if (m.i && m.i.some(Boolean)) { p.l = m.i; if (m.i.length > p.i.length) p.i = m.i.filter(Boolean); }
+      if (m.v && m.v.length) p.v = m.v; }
+    render();
+  } catch {}
+})();
 const h = location.hash.match(/^#p(\d+)$/); if (h) openProduct(+h[1]);
 </script>
 </body>
