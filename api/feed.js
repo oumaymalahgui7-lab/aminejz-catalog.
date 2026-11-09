@@ -38,7 +38,7 @@ function group(msgs) {
 function toProduct(g) {
   const lines = g.text.split("\n").map(s => s.trim()).filter(Boolean);
   const q = lines.map(l => l.match(/^(.{1,40}?)\s*[:=\-–]?\s*(\d{1,5})\s*(?:dhs?|mad|درهم)\s*$/i)).filter(Boolean).map(m => [m[1].trim(), +m[2]]);
-  const title = lines.find(l => !/\d/.test(l) && l.length < 60) || null;
+  const title = lines.find(l => !/\d/.test(l) && l.length < 60 && !/whatsapp|commander|واتساب|للطلب/i.test(l)) || null;
   return { n: g.n, t: title, o: price(g.text), i: g.i, v: g.v, d: g.d, x: "", q: q.length > 1 ? q : [] };
 }
 
