@@ -1,70 +1,62 @@
-// Vercel function: reads the public Telegram channel page and returns posts newer than ?after=<id> as catalog products.
-const CH = "toopmaroc";
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
-const EMO = /[\u{1F000}-\u{1FAFF}☀-➿⭐⬆️‍]+/gu;
-const PRICE = /(\d+(?:[.,]\d+)?)\s*(?:dhs?|dirhams?|درهم|دراهم)(?![\p{L}])/iu;
-const SUPPLIER = /(?:📞\s*)?too?p\s*maroc\s*:?/gi;
+// Vercel Function: /api/feed?after=<آخر رقم منشور>  → يرجع منشورات تيليغرام الجديدة (صور + فيديوهات + سعر)
+const SRC = "toopmaroc", MAX_PAGES = 8;
+const dec = s => String(s).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&#(\d+);/g, (m, c) => String.fromCharCode(+c));
+const txt = h => dec(h.replace(/<br\s*\/?>/g, "\n").replace(/<[^>]+>/g, "")).trim();
 
-const decode = s => s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;/g, "'")
-  .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)));
-const htmlToText = h => decode(h.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, ""));
-const junk = s => !s.replace(EMO, "").replace(/[\s:：\-–—_=.|,،•*]+/g, "");
-
-function parseBlock(b) {
-  const id = +(b.match(/data-post="[^"/]+\/(\d+)"/) || [])[1];
-  if (!id) return null;
-  const photos = [...b.matchAll(/tgme_widget_message_photo_wrap[^>]*?background-image:\s*url\((?:&quot;|["'])?([^)"']+?)(?:&quot;|["'])?\)/g)].map(m => decode(m[1]));
-  const thumbs = [...b.matchAll(/tgme_widget_message_(?:round)?video_thumb[^>]*?background-image:\s*url\((?:&quot;|["'])?([^)"']+?)(?:&quot;|["'])?\)/g)].map(m => decode(m[1]));
-  const videos = [...new Set([...b.matchAll(/<video[^>]*?\ssrc="([^"]+)"/g)].map(m => decode(m[1])))];
-  const tm = b.match(/<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/);
-  const date = (b.match(/<time[^>]*datetime="([^"]+)"/) || [])[1] || "";
-  return { id, photos, thumbs, videos, text: tm ? htmlToText(tm[1]) : "", date: date.slice(0, 10) };
-}
-
-function toProduct(m) {
-  const lines = m.text.replace(SUPPLIER, "").split("\n").map(l => l.replace(/[ \t ]+/g, " ").trim()).filter(l => !junk(l));
-  const tiers = []; const keep = []; let o = null;
-  for (const l of lines) {
-    const pm = l.match(PRICE), bare = l.replace(EMO, "").trim().match(/^(\d+(?:[.,]\d+)?)$/);
-    if (pm || bare) {
-      const price = parseFloat(((pm || bare)[1]).replace(",", "."));
-      let label = pm ? (l.slice(0, pm.index) + " " + l.slice(pm.index + pm[0].length)) : "";
-      label = label.replace(EMO, " ").replace(/\s+/g, " ").trim().replace(/^[\s:：\-–|=+]+|[\s:：\-–|=+]+$/g, "");
-      if (/^(ال[ثت]من|prix|price|السعر|ب)$/i.test(label)) label = "";
-      if (label.length > 40 || label.split(" ").length > 6) { keep.push(l.replace(PRICE, "").trim()); if (o === null) o = price; continue; }
-      if (o === null) { o = price; if (!label) continue; }
-      if (price === o && !label) continue;
-      tiers.push([label.replace(/^(\d+)\s*pcs$/i, "$1 pcs فأكثر"), price]);
-    } else keep.push(l);
-  }
-  if (o === null) return null;                       // no price found: skip
-  let t = null;
-  for (let i = 0; i < keep.length; i++) { const c = keep[i].replace(EMO, "").trim(); if (c.length >= 2 && c.length <= 50 && !/^(colis|pack\b|\+?\s*\d+\s*pcs)/i.test(c)) { t = c; keep.splice(i, 1); break; } }
-  return { n: m.id, t, o, i: m.photos.length ? m.photos : m.thumbs, v: m.videos, d: m.date, x: keep.join("\n"), q: tiers };
-}
-
-export default async function handler(req, res) {
-  const after = parseInt(req.query.after) || 0;
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "public, s-maxage=300, max-age=120");
-  try {
-    const out = []; let before = 0, skipped = 0;
-    for (let page = 0; page < 10; page++) {
-      const r = await fetch(`https://t.me/s/${CH}` + (before ? `?before=${before}` : ""), { headers: { "User-Agent": UA } });
-      if (!r.ok) break;
-      const html = await r.text();
-      const blocks = html.split(/<div class="tgme_widget_message_wrap/).slice(1).map(parseBlock).filter(Boolean);
-      if (!blocks.length) break;
-      let minId = Infinity;
-      for (const b of blocks) {
-        minId = Math.min(minId, b.id);
-        if (b.id > after && (b.photos.length || b.thumbs.length)) { const p = toProduct(b); if (p) out.push(p); else skipped++; }
-      }
-      if (minId <= after + 1 || minId === Infinity) break;
-      before = minId;
+function parseMsgs(html) {
+  const out = [];
+  for (const b of html.split('<div class="tgme_widget_message_wrap').slice(1)) {
+    const m = b.match(/data-post="[^"\/]+\/(\d+)"/); if (!m) continue;
+    const imgs = [...b.matchAll(/tgme_widget_message_photo_wrap[^>]*?background-image:\s*url\(['"]?([^'")]+)/g)].map(x => dec(x[1]));
+    const vids = [...b.matchAll(/<video[^>]*?\ssrc="([^"]+)"/g)].map(x => dec(x[1]));
+    if (!imgs.length && vids.length) {   // فيديو بدون صورة: نستعمل صورة الغلاف
+      const th = b.match(/tgme_widget_message_video_thumb[^>]*?background-image:\s*url\(['"]?([^'")]+)/);
+      if (th) imgs.push(dec(th[1]));
     }
-    res.status(200).json({ products: out.sort((a, b) => a.n - b.n), skipped });
-  } catch (e) {
-    res.status(200).json({ products: [], error: String(e) });
+    const t = b.match(/tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/), d = b.match(/<time[^>]*datetime="([^"]+)"/);
+    out.push({ n: +m[1], imgs, vids, text: t ? txt(t[1]) : "", date: d ? d[1].slice(0, 10) : "" });
   }
+  return out;
 }
+
+function price(t) {
+  const m = t.match(/(\d{1,5}(?:[.,]\d+)?)\s*(?:dhs?|mad|درهم|د\.م)/i) || t.match(/(?:prix|السعر|ثمن)[^\d]{0,20}(\d{1,5})/i);
+  return m ? parseFloat(m[1].replace(",", ".")) : 0;
+}
+
+// الألبوم: الرسالة التي فيها نص تبدأ منتجا جديدا، والرسائل المتتالية بلا نص تنضم إليها
+function group(msgs) {
+  const out = []; let cur = null;
+  for (const m of msgs.sort((a, b) => a.n - b.n)) {
+    if (!m.imgs.length && !m.vids.length) continue;
+    if (cur && !m.text && m.n === cur.end + 1) { cur.i.push(...m.imgs); cur.v.push(...m.vids); cur.end = m.n; continue; }
+    cur = { n: m.n, end: m.n, i: [...m.imgs], v: [...m.vids], text: m.text, d: m.date }; out.push(cur);
+  }
+  return out;
+}
+
+function toProduct(g) {
+  const lines = g.text.split("\n").map(s => s.trim()).filter(Boolean);
+  const q = lines.map(l => l.match(/^(.{1,40}?)\s*[:=\-–]?\s*(\d{1,5})\s*(?:dhs?|mad|درهم)\s*$/i)).filter(Boolean).map(m => [m[1].trim(), +m[2]]);
+  const title = lines.find(l => !/\d/.test(l) && l.length < 60) || null;
+  return { n: g.n, t: title, o: price(g.text), i: g.i, v: g.v, d: g.d, x: "", q: q.length > 1 ? q : [] };
+}
+
+module.exports = async (req, res) => {
+  const after = parseInt(req.query.after) || 0; let before = "", all = [];
+  try {
+    for (let k = 0; k < MAX_PAGES; k++) {
+      const r = await fetch(`https://t.me/s/${SRC}${before ? "?before=" + before : ""}`, { headers: { "User-Agent": "Mozilla/5.0" } });
+      if (!r.ok) break;
+      const msgs = parseMsgs(await r.text()); if (!msgs.length) break;
+      all.push(...msgs); const min = Math.min(...msgs.map(m => m.n));
+      if (min <= after + 1) break; before = min;
+    }
+    const seen = new Set(), uniq = all.filter(m => !seen.has(m.n) && seen.add(m.n));
+    const products = group(uniq).filter(g => g.n > after).map(toProduct).filter(p => p.o > 0);
+    res.setHeader("Cache-Control", "s-maxage=120, stale-while-revalidate=600");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.status(200).json({ products });
+  } catch (e) { res.status(200).json({ products: [] }); }
+};
+module.exports._t = { parseMsgs, group, toProduct };
