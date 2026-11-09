@@ -156,7 +156,7 @@ const T = {
   orig:"المنشور الأصلي", copied:"تم نسخ الرابط", cart:"السلة", empty:"السلة فارغة", total:"المجموع", send:"إرسال الطلب عبر WhatsApp", rm:"حذف",
   added:"أُضيف إلى السلة", settings:"الإعدادات", margin:"هامش الربح (DH)", save:"حفظ",
   marginNote:"يُضاف إلى السعر الأصلي لكل منتج عند العرض، ولا يُغيَّر السعر الأصلي.",
-  contact:"للتواصل والطلب", new:"جديد", proxyL:"رابط البروكسي (Cloudflare Worker) لجلب صور تيليجرام",  tiersL:"أسعار حسب الكمية", unit:"سعر الوحدة",
+  contact:"للتواصل والطلب", new:"جديد", newAdded:n=>`تمت إضافة ${n} منتج جديد من تيليجرام`, proxyL:"رابط البروكسي (Cloudflare Worker) لجلب صور تيليجرام",  tiersL:"أسعار حسب الكمية", unit:"سعر الوحدة",
   one:(n,q,p,u)=>`• ${n} × ${q} = ${p} DH\n  ${u}`,
   tpl:(n,p,q,u)=>`السلام عليكم، أريد طلب هذا المنتج:\n\nاسم المنتج: ${n}\n\nالسعر: ${p} DH\n\nالكمية: ${q}\n\nرابط المنتج: ${u}\n\nشكراً لكم.`,
   cartTpl:(lines,t)=>`السلام عليكم، أريد طلب المنتجات التالية:\n\n${lines}\n\nالمجموع: ${t} DH\n\nشكراً لكم.`},
@@ -166,7 +166,7 @@ const T = {
   orig:"Publication d’origine", copied:"Lien copié", cart:"Panier", empty:"Panier vide", total:"Total", send:"Envoyer la commande sur WhatsApp", rm:"Retirer",
   added:"Ajouté au panier", settings:"Réglages", margin:"Marge (DH)", save:"Enregistrer",
   marginNote:"Ajoutée au prix d’origine à l’affichage ; le prix d’origine n’est jamais modifié.",
-  contact:"Contact et commandes", new:"Nouveau", proxyL:"URL du proxy (Cloudflare Worker) pour les photos Telegram", tiersL:"Prix selon la quantité", unit:"Prix unitaire",
+  contact:"Contact et commandes", new:"Nouveau", newAdded:n=>`${n} nouveau(x) produit(s) ajouté(s) depuis Telegram`, proxyL:"URL du proxy (Cloudflare Worker) pour les photos Telegram", tiersL:"Prix selon la quantité", unit:"Prix unitaire",
   one:(n,q,p,u)=>`• ${n} × ${q} = ${p} DH\n  ${u}`,
   tpl:(n,p,q,u)=>`Bonjour, je souhaite commander ce produit :\n\nProduit : ${n}\n\nPrix : ${p} DH\n\nQuantité : ${q}\n\nLien : ${u}\n\nMerci.`,
   cartTpl:(lines,t)=>`Bonjour, je souhaite commander :\n\n${lines}\n\nTotal : ${t} DH\n\nMerci.`}
@@ -313,6 +313,25 @@ $("pd").addEventListener("close", () => history.replaceState(null, "", location.
 $("lang").onclick = () => { lang = lang === "ar" ? "fr" : "ar"; try { localStorage.setItem("bsc_lang", lang); } catch {} render(); };
 $("more").onclick = () => { shown += PAGE; render(); };
 ["q","pmin","pmax","sort","newOnly"].forEach(id => $(id).addEventListener("input", () => { shown = PAGE; render(); }));
+// ---- auto-import of new Telegram posts (via /api/feed on this Vercel site) ----
+function addNew(list){
+  let added = 0;
+  for (const p of list) { if (byN.has(p.n) || !p.i || !p.i.length) continue; p.q = p.q || []; p.x = p.x || ""; PRODUCTS.push(p); byN.set(p.n, p); added++; }
+  return added;
+}
+(async () => {
+  if (!PROXY) return;
+  try { const c = JSON.parse(localStorage.getItem("bsc_new") || "[]"); if (addNew(c)) render(); } catch {}
+  try {
+    const after = Math.max(...PRODUCTS.map(p => p.n + p.i.length - 1));
+    const r = await fetch(PROXY + "/feed?after=" + after); if (!r.ok) return;
+    const j = await r.json(); const fresh = (j.products || []).filter(p => !byN.has(p.n));
+    if (!fresh.length) return;
+    addNew(fresh);
+    try { const old = JSON.parse(localStorage.getItem("bsc_new") || "[]"); localStorage.setItem("bsc_new", JSON.stringify(old.concat(fresh))); } catch {}
+    render(); toast(L().newAdded(fresh.length));
+  } catch {}
+})();
 render();
 const h = location.hash.match(/^#p(\d+)$/); if (h) openProduct(+h[1]);
 </script>
