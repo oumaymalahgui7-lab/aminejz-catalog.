@@ -99,6 +99,7 @@ footer{background:#0f172a;color:#94a3b8;font-size:.85rem;padding:24px 0}
 footer a{color:#fbbf24}
 .toast{position:fixed;inset-inline:0;bottom:16px;margin:auto;width:fit-content;background:#0f172a;color:#fff;padding:8px 16px;border-radius:999px;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.on{opacity:1}
+.vids{display:grid;gap:10px;margin-top:10px}.vids video{width:100%;max-height:70vh;border-radius:10px;background:#000}.vb{font-size:.8rem;margin-top:4px}.vb a{color:var(--acc-d);font-weight:700;text-decoration:none}.vbadge{position:absolute;bottom:10px;inset-inline-start:10px;background:#0f172acc;color:#fff;font-size:.65rem;padding:1px 7px;border-radius:4px}
 </style>
 </head>
 <body>
@@ -156,7 +157,7 @@ const T = {
   orig:"المنشور الأصلي", copied:"تم نسخ الرابط", cart:"السلة", empty:"السلة فارغة", total:"المجموع", send:"إرسال الطلب عبر WhatsApp", rm:"حذف",
   added:"أُضيف إلى السلة", settings:"الإعدادات", margin:"هامش الربح (DH)", save:"حفظ",
   marginNote:"يُضاف إلى السعر الأصلي لكل منتج عند العرض، ولا يُغيَّر السعر الأصلي.",
-  contact:"للتواصل والطلب", new:"جديد", newAdded:n=>`تمت إضافة ${n} منتج جديد من تيليجرام`, proxyL:"رابط البروكسي (Cloudflare Worker) لجلب صور تيليجرام",  tiersL:"أسعار حسب الكمية", unit:"سعر الوحدة",
+  contact:"للتواصل والطلب", new:"جديد", newAdded:n=>`تمت إضافة ${n} منتج جديد من تيليجرام`, proxyL:"رابط البروكسي (Cloudflare Worker) لجلب صور تيليجرام",  tiersL:"أسعار حسب الكمية", unit:"سعر الوحدة", vid:"فيديو", dl:"تحميل الفيديو", vErr:"تعذّر تشغيل الفيديو — شاهده من المنشور الأصلي",
   one:(n,q,p,u)=>`• ${n} × ${q} = ${p} DH\n  ${u}`,
   tpl:(n,p,q,u)=>`السلام عليكم، أريد طلب هذا المنتج:\n\nاسم المنتج: ${n}\n\nالسعر: ${p} DH\n\nالكمية: ${q}\n\nرابط المنتج: ${u}\n\nشكراً لكم.`,
   cartTpl:(lines,t)=>`السلام عليكم، أريد طلب المنتجات التالية:\n\n${lines}\n\nالمجموع: ${t} DH\n\nشكراً لكم.`},
@@ -166,7 +167,7 @@ const T = {
   orig:"Publication d’origine", copied:"Lien copié", cart:"Panier", empty:"Panier vide", total:"Total", send:"Envoyer la commande sur WhatsApp", rm:"Retirer",
   added:"Ajouté au panier", settings:"Réglages", margin:"Marge (DH)", save:"Enregistrer",
   marginNote:"Ajoutée au prix d’origine à l’affichage ; le prix d’origine n’est jamais modifié.",
-  contact:"Contact et commandes", new:"Nouveau", newAdded:n=>`${n} nouveau(x) produit(s) ajouté(s) depuis Telegram`, proxyL:"URL du proxy (Cloudflare Worker) pour les photos Telegram", tiersL:"Prix selon la quantité", unit:"Prix unitaire",
+  contact:"Contact et commandes", new:"Nouveau", newAdded:n=>`${n} nouveau(x) produit(s) ajouté(s) depuis Telegram`, proxyL:"URL du proxy (Cloudflare Worker) pour les photos Telegram", tiersL:"Prix selon la quantité", unit:"Prix unitaire", vid:"Vidéo", dl:"Télécharger la vidéo", vErr:"Vidéo indisponible — voir la publication d’origine",
   one:(n,q,p,u)=>`• ${n} × ${q} = ${p} DH\n  ${u}`,
   tpl:(n,p,q,u)=>`Bonjour, je souhaite commander ce produit :\n\nProduit : ${n}\n\nPrix : ${p} DH\n\nQuantité : ${q}\n\nLien : ${u}\n\nMerci.`,
   cartTpl:(lines,t)=>`Bonjour, je souhaite commander :\n\n${lines}\n\nTotal : ${t} DH\n\nMerci.`}
@@ -259,7 +260,7 @@ function render(){
   const l = filtered(), view = l.slice(0, shown);
   $("cnt").textContent = t.shown(view.length, l.length);
   $("more").style.display = view.length < l.length ? "block" : "none";
-  $("list").innerHTML = view.length ? `<div class="grid">${view.map(p => `<div class="card" data-n="${p.n}"><div class="ph">${p.i.length ? img(p,0) : NOIMG()}<span class="tg">${t.tg}</span>${p.i.length>1?`<span class="nb">${t.imgs(p.i.length)}</span>`:""}</div><div class="b"><h3>${esc(name(p))}</h3><div class="pr"><small>${t.priceL}</small><span class="price">${fp(p)}<em>${t.dh}</em></span></div><div class="row"><button class="add" data-add="${p.n}">${t.add}</button><a class="w" data-wa="${p.n}" href="#" title="WhatsApp">💬</a></div></div></div>`).join("")}</div>` : `<div class="empty">${t.noRes}</div>`;
+  $("list").innerHTML = view.length ? `<div class="grid">${view.map(p => `<div class="card" data-n="${p.n}"><div class="ph">${p.i.length ? img(p,0) : NOIMG()}<span class="tg">${t.tg}</span>${p.i.length>1?`<span class="nb">${t.imgs(p.i.length)}</span>`:""}${p.v&&p.v.length?`<span class="vbadge">▶ ${t.vid}</span>`:""}</div><div class="b"><h3>${esc(name(p))}</h3><div class="pr"><small>${t.priceL}</small><span class="price">${fp(p)}<em>${t.dh}</em></span></div><div class="row"><button class="add" data-add="${p.n}">${t.add}</button><a class="w" data-wa="${p.n}" href="#" title="WhatsApp">💬</a></div></div></div>`).join("")}</div>` : `<div class="empty">${t.noRes}</div>`;
   $("list").querySelectorAll(".card").forEach(c => c.onclick = e => {
     const add = e.target.closest("[data-add]"), wa = e.target.closest("[data-wa]");
     if (add) { e.stopPropagation(); const n = +add.dataset.add; cart[n] = (cart[n]||0)+1; persist(); render(); toast(t.added); return; }
@@ -267,12 +268,27 @@ function render(){
     openProduct(+c.dataset.n);
   });
 }
+const vids = p => (p.v && p.v.length) ? `<div class="vids">${p.v.map((u,i)=>`<div><video controls playsinline preload="metadata" referrerpolicy="no-referrer" src="${esc(u)}" data-n="${p.n}" data-i="${i}" onerror="vidErr(this)"></video><div class="vb"><a href="${esc(u)}" download target="_blank" rel="noopener">⬇ ${L().dl}</a></div></div>`).join("")}</div>` : "";
+async function freshVid(n){
+  const page = `https://t.me/${SRC}/${n}?embed=1&mode=tme`;
+  for (const r of (PROXY ? [worker, ...RELAYS] : RELAYS)) {
+    try { const res = await fetch(r(page)); if (!res.ok) continue; const html = await res.text();
+      const a = [...html.matchAll(/<video[^>]*?\ssrc="([^"]+)"/g)].map(m => m[1].replace(/&amp;/g, "&")); if (a.length) return a; } catch {}
+  }
+  return [];
+}
+async function vidErr(el){   // expired link: re-read the post once, otherwise show a fallback note
+  if (el.dataset.r) { const d = document.createElement("div"); d.className = "note"; d.textContent = L().vErr; el.replaceWith(d); return; }
+  el.dataset.r = 1;
+  const a = await freshVid(+el.dataset.n), u = a[+el.dataset.i] || a[0];
+  if (u) { el.src = u; el.load(); const dl = el.parentNode.querySelector("a"); if (dl) dl.href = u; } else vidErr(el);
+}
 function openProduct(n){
   const p = byN.get(n); if (!p) return; const t = L();
   history.replaceState(null, "", "#p" + n);
   $("pdT").textContent = name(p);
   $("pdB").innerHTML = `<div class="det"><div class="gal"><div class="main" id="gm">${p.i.length ? img(p,0,"",1100) : NOIMG()}</div>
-   ${p.i.length>1?`<div class="th">${p.i.map((u,i)=>img(p, i, i?"":"on", 160)).join("")}</div>`:""}</div>
+   ${p.i.length>1?`<div class="th">${p.i.map((u,i)=>img(p, i, i?"":"on", 160)).join("")}</div>`:""}${vids(p)}</div>
    <div style="display:grid;gap:10px;align-content:start"><div class="price" style="font-size:1.5rem">${fp(p)} ${t.dh}</div>
    <div class="row"><label>${t.qty} <input class="qty" id="qty" type="number" min="1" value="1" inputmode="numeric"></label></div>
    <div class="row"><button class="btn acc" id="add">${t.add}</button><button class="btn wa" id="ord">${t.order}</button><button class="btn ghost" id="shr">${t.share}</button></div>
@@ -316,7 +332,7 @@ $("more").onclick = () => { shown += PAGE; render(); };
 // ---- auto-import of new Telegram posts (via /api/feed on this Vercel site) ----
 function addNew(list){
   let added = 0;
-  for (const p of list) { if (byN.has(p.n) || !p.i || !p.i.length) continue; p.q = p.q || []; p.x = p.x || ""; PRODUCTS.push(p); byN.set(p.n, p); added++; }
+  for (const p of list) { if (byN.has(p.n) || !p.i || !p.i.length) continue; p.q = p.q || []; p.x = p.x || ""; p.v = p.v || []; PRODUCTS.push(p); byN.set(p.n, p); added++; }
   return added;
 }
 (async () => {
