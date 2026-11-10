@@ -42,4 +42,22 @@ module.exports = async (req, res) => {
     cur.margin = m;
     if (!cur.prices) cur.prices = {};
 
-    co
+    const p = await fetch(url, {
+      method: "PUT",
+      headers: { ...H, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Update margin",
+        content: Buffer.from(JSON.stringify(cur, null, 2)).toString("base64"),
+        sha,
+      }),
+    });
+    if (!p.ok) {
+      console.error("GH_PUT", p.status, (await p.text()).slice(0, 300));
+      return res.status(500).json({ ok: false, error: "github" });
+    }
+    res.status(200).json({ ok: true, margin: m });
+  } catch (e) {
+    console.error("GH_ERR", String(e));
+    res.status(500).json({ ok: false, error: "github" });
+  }
+};
