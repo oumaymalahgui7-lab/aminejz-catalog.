@@ -1,4 +1,4 @@
-const REPO = process.env.GH_REPO || "oumaymalahgui7-lab/aminejz-catalog";
+const REPO = process.env.GH_REPO || "oumaymalahgui7-lab/aminejz-catalog.";
 const FILE = "settings.json";
 
 module.exports = async (req, res) => {
