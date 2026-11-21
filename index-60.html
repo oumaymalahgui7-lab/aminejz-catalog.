@@ -37,6 +37,7 @@ header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid v
 .hero h1 span{display:block;color:#fbbf24;margin-top:6px;font-size:.62em}
 .hero p{margin:0 0 18px;color:#cbd5e1;max-width:62ch}
 .hero .cta{display:flex;gap:10px;flex-wrap:wrap}
+.hero .wrap{display:grid;gap:22px;align-items:center}.hero-img{width:100%;max-width:420px;height:auto;justify-self:center;border-radius:18px;box-shadow:0 12px 32px #0008}@media(min-width:760px){.hero .wrap{grid-template-columns:1.15fr .85fr}}
 .btn{border:0;border-radius:10px;padding:10px 18px;font-weight:700;background:#0f172a;color:#fff;text-decoration:none;display:inline-block;font-size:.85rem}
 .btn.acc{background:#f59e0b;color:#0f172a;font-weight:900}
 .btn.acc:hover{background:#fbbf24}
@@ -115,10 +116,13 @@ footer a{color:#fbbf24}
 </div></header>
 
 <section class="hero"><div class="wrap">
+  <div class="ht">
   <div class="badge"><i></i><span id="hb"></span></div>
   <h1 id="h1"></h1>
   <p id="hp"></p>
   <div class="cta"><a class="btn acc" id="explore" href="#catalog"></a></div>
+  </div>
+  <img class="hero-img" src="hero.jpg" width="800" height="800" alt="AMINEJZ - البيع بالجملة والتوصيل لكل المغرب" fetchpriority="high">
 </div></section>
 
 <div class="tools" id="catalog"><div class="wrap">
