@@ -478,7 +478,7 @@ function openProduct(n){
    <div class="row"><button class="btn acc" id="add">${t.add}</button><button class="btn wa" id="ord">${t.order}</button><button class="btn ghost" id="shr">${t.share}</button></div>
    ${(p.q&&p.q.length)?`<div class="tiers"><b>${t.tiersL}</b>${p.q.map(([lb,pr])=>`<div><span>${esc(lb||t.unit)}</span><span>${pr+(fp(p)-p.o)} ${t.dh}</span></div>`).join("")}</div>`:""}
    ${p.x?`<div class="desc">${esc(p.x)}</div>`:""}
-   <a class="note" href="https://t.me/${SRC}/${p.n}" target="_blank" rel="noopener">${t.orig} #${p.n}</a></div></div>`;
+   </div></div>`;
   $("pdB").querySelectorAll(".th img").forEach(im => im.onclick = () => { $("gm").innerHTML = img(p, +im.dataset.i, "", 1100); $("pdB").querySelectorAll(".th img").forEach(x => x.classList.toggle("on", x === im)); });
   const qty = () => Math.max(1, parseInt($("qty").value) || 1);
   $("add").onclick = () => { cart[n] = (cart[n]||0) + qty(); persist(); render(); toast(t.added); };
